@@ -58,16 +58,11 @@ android {
     // https://issuetracker.google.com/issues/178400721
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_19
-        targetCompatibility JavaVersion.VERSION_19
+        sourceCompatibility JavaVersion.VERSION_17
     }
 
     lintOptions {
         abortOnError false
-    }
-
-    kotlinOptions {
-        jvmTarget = '19'
     }
 
     namespace 'it.sephiroth.android.rxjava3.extensions'
