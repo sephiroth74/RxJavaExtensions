@@ -40,10 +40,20 @@ open class AutoDisposableSubscriber<T>() : DisposableSubscriber<T>() where T : A
     private var _doOnError: ((Throwable) -> Unit)? = null
     private var _doOnFinish: (() -> Unit)? = null
     private var _doOnDispose: (() -> Unit)? = null
+    internal var _doOnFirst: ((T) -> Unit)? = null
+    internal var _doAfterFirst: ((T) -> Unit)? = null
 
     @Suppress("unused")
     constructor(builder: (AutoDisposableSubscriber<T>.() -> Unit)) : this() {
         this.builder()
+    }
+
+    fun onFirst(t: T) {
+        _doOnFirst?.invoke(t)
+    }
+
+    fun onAfterFirst(t: T) {
+        _doAfterFirst?.invoke(t)
     }
 
     override fun onNext(t: T) {
@@ -70,6 +80,14 @@ open class AutoDisposableSubscriber<T>() : DisposableSubscriber<T>() where T : A
     override fun onDispose() {
         _doOnDispose?.invoke()
         clear()
+    }
+
+    fun doOnFirst(t: ((t: T) -> Unit)) {
+        _doOnFirst = t
+    }
+
+    fun doAfterFirst(t: ((t: T) -> Unit)) {
+        _doAfterFirst = t
     }
 
     fun doOnStart(t: (() -> Unit)) {

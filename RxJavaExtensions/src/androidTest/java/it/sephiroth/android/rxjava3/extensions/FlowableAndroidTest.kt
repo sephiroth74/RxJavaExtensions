@@ -164,11 +164,23 @@ class FlowableAndroidTest {
     @Test
     fun test006() {
         val currentThread = Thread.currentThread()
-        val latch = CountDownLatch(4)
-        Flowable.just(1)
+        val latch = CountDownLatch(7)
+        val firstLatch = CountDownLatch(1)
+        val afterFirstLatch = CountDownLatch(3)
+        Flowable.just(1, 2, 3, 4)
             .subscribeOn(Schedulers.io())
             .observeMain()
             .autoSubscribe {
+                doOnFirst {
+                    Assert.assertEquals(mainThread, Thread.currentThread())
+                    firstLatch.countDown()
+                }
+
+                doAfterFirst {
+                    Assert.assertEquals(mainThread, Thread.currentThread())
+                    afterFirstLatch.countDown()
+                }
+
                 doOnStart {
                     Assert.assertEquals(currentThread, Thread.currentThread())
                     latch.countDown()
@@ -191,7 +203,9 @@ class FlowableAndroidTest {
                 }
             }
 
-        latch.await()
+        latch.await(1, TimeUnit.SECONDS)
+        firstLatch.await(1, TimeUnit.SECONDS)
+        afterFirstLatch.await(1, TimeUnit.SECONDS)
     }
 
     @Test

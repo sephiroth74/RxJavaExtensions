@@ -87,7 +87,14 @@ fun <T : Any> Observable<List<T>>.firstInList(predicate: Predicate<T>): Maybe<T>
  * The source will be disposed when a complete or error event is received.
  */
 fun <T> Observable<T>.autoSubscribe(observer: AutoDisposableObserver<T>): AutoDisposableObserver<T> where T : Any {
-    return this.subscribeWith(observer)
+    var observable = this
+    observer._doOnFirst?.let {
+        observable = observable.doOnFirst(it)
+    }
+    observer._doAfterFirst?.let {
+        observable = observable.doAfterFirst(it)
+    }
+    return observable.subscribeWith(observer)
 }
 
 /**
@@ -96,7 +103,7 @@ fun <T> Observable<T>.autoSubscribe(observer: AutoDisposableObserver<T>): AutoDi
 fun <T> Observable<T>.autoSubscribe(
     builder: (AutoDisposableObserver<T>.() -> Unit)
 ): AutoDisposableObserver<T> where T : Any {
-    return this.subscribeWith(AutoDisposableObserver(builder))
+    return this.autoSubscribe(AutoDisposableObserver(builder))
 }
 
 /**

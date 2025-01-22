@@ -39,6 +39,8 @@ import io.reactivex.rxjava3.functions.Function
 import io.reactivex.rxjava3.plugins.RxJavaPlugins
 import it.sephiroth.android.rxjava3.extensions.RetryException
 import it.sephiroth.android.rxjava3.extensions.observable.autoSubscribe
+import it.sephiroth.android.rxjava3.extensions.observable.doAfterFirst
+import it.sephiroth.android.rxjava3.extensions.observable.doOnFirst
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableObserver
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableSubscriber
 import it.sephiroth.android.rxjava3.extensions.operators.FlowableMapNotNull
@@ -59,7 +61,14 @@ import java.util.function.Predicate
  * The source will be disposed when a complete or error event is received.
  */
 fun <T> Flowable<T>.autoSubscribe(observer: AutoDisposableSubscriber<T>): AutoDisposableSubscriber<T> where T : Any {
-    return this.subscribeWith(observer)
+    var flowable = this
+    observer._doOnFirst?.let {
+        flowable = flowable.doOnFirst(it)
+    }
+    observer._doAfterFirst?.let {
+        flowable = flowable.doAfterFirst(it)
+    }
+    return flowable.subscribeWith(observer)
 }
 
 /**
@@ -68,7 +77,7 @@ fun <T> Flowable<T>.autoSubscribe(observer: AutoDisposableSubscriber<T>): AutoDi
 fun <T> Flowable<T>.autoSubscribe(
     builder: (AutoDisposableSubscriber<T>.() -> Unit)
 ): AutoDisposableSubscriber<T> where T : Any {
-    return this.subscribeWith(AutoDisposableSubscriber(builder))
+    return this.autoSubscribe(AutoDisposableSubscriber(builder))
 }
 
 @SuppressLint("LogNotTimber")

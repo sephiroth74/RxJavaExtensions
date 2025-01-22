@@ -77,6 +77,8 @@ class ObservableAndroidTest {
 
     @Test
     fun test003() {
+        val firstLatch = CountDownLatch(1)
+        val afterFirstLatch = CountDownLatch(4)
         val latch = CountDownLatch(8)
         val d = Observable
             .just(1, 2, 3, 4, 5).autoSubscribe {
@@ -84,8 +86,14 @@ class ObservableAndroidTest {
                 doOnNext { latch.countDown() }
                 doOnComplete { latch.countDown() }
                 doOnFinish { latch.countDown() }
+                doOnFirst { firstLatch.countDown() }
+                doAfterFirst { afterFirstLatch.countDown() }
             }
+
         latch.await()
+        firstLatch.await()
+        afterFirstLatch.await()
+
         Assert.assertTrue(d.isDisposed)
     }
 
