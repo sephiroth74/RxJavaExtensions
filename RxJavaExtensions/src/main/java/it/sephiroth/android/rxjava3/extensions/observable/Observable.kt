@@ -138,6 +138,13 @@ fun <T> Observable<T>.retry(
         ).map { if (it.second >= maxRetry) throw it.first }
     }
 
+/**
+ * Retries the source observable with a back-off delay.
+ *
+ * @param maxRetryCount The maximum number of retry attempts.
+ * @param backOffTimeFunc A function that returns the back-off time in milliseconds for each retry attempt.
+ * @return An Observable that retries the source observable with a back-off delay.
+ */
 fun <T : Any> Observable<T>.retryWithBackOffDelay(maxRetryCount: Int, backOffTimeFunc: (Int) -> Long): Observable<T> {
     return retryWhen { errors ->
         errors.zipWith(Observable.range(1, maxRetryCount + 1)) { throwable, retryCount -> Pair(throwable, retryCount) }
@@ -154,7 +161,12 @@ fun <T : Any> Observable<T>.retryWithBackOffDelay(maxRetryCount: Int, backOffTim
 
 /**
  * Returns an Observable that emits the source observable every [time]. The source observable is triggered immediately
- * and all the consecutive calls after the time specified
+ * and all the consecutive calls after the time specified.
+ *
+ * @param time The interval time between emissions.
+ * @param timeUnit The time unit for the interval.
+ * @param scheduler The scheduler to use for the interval.
+ * @return An Observable that emits the source observable at the specified interval.
  */
 fun <T> Observable<T>.refreshEvery(
     time: Long,
@@ -164,12 +176,23 @@ fun <T> Observable<T>.refreshEvery(
     Observable.interval(0, time, timeUnit, scheduler).flatMap { this }
 
 /**
- * Returns an Observable that emits the source observable every time the [publisher] observable emits true
+ * Returns an Observable that emits the source observable every time the [publisher] observable emits true.
+ *
+ * @param publisher The publisher observable that triggers the source observable.
+ * @return An Observable that emits the source observable when the publisher emits true.
  */
 fun <T> Observable<T>.autoRefresh(publisher: Observable<Boolean>): Observable<T> where T : Any {
     return publisher.filter { it }.flatMap { this }
 }
 
+/**
+ * Returns an Observable that emits the source observable at a fixed interval.
+ *
+ * @param initialDelay The initial delay before the first emission.
+ * @param period The interval period between emissions.
+ * @param unit The time unit for the interval.
+ * @return An Observable that emits the source observable at the specified interval.
+ */
 fun <T : Any> Observable<T>.autoRefresh(
     initialDelay: Long = 0,
     period: Long = 1,
@@ -179,7 +202,10 @@ fun <T : Any> Observable<T>.autoRefresh(
 }
 
 /**
- * Converts the elements of a list of an Observable
+ * Converts the elements of a list of an Observable.
+ *
+ * @param mapper A function to apply to each element in the list.
+ * @return An Observable that emits the mapped list.
  */
 @CheckReturnValue
 @SchedulerSupport(SchedulerSupport.NONE)
@@ -188,7 +214,12 @@ fun <R, T> Observable<List<T>>.mapList(mapper: Function<in T, out R>): Observabl
 }
 
 /**
- * Mute the source [Observable] until the predicate [func] returns true, retrying using the given [delay]
+ * Mute the source [Observable] until the predicate [func] returns true, retrying using the given [delay].
+ *
+ * @param delay The delay before retrying.
+ * @param unit The time unit for the delay.
+ * @param func The predicate function to evaluate.
+ * @return An Observable that mutes the source observable until the predicate returns true.
  */
 fun <T> Observable<T>.muteUntil(
     delay: Long,
@@ -211,8 +242,9 @@ fun <T> Observable<T>.muteUntil(
  * If all the elements returned by the mapper function are null, the upstream observable
  * will fire onComplete.
  *
+ * @param mapper A function to apply to each element in the Observable.
+ * @return An Observable that emits only non-null elements.
  * @since 3.0.3
- *
  */
 @CheckReturnValue
 @SchedulerSupport(SchedulerSupport.NONE)
@@ -224,6 +256,12 @@ fun <T, R> Observable<T>.mapNotNull(
     return RxJavaPlugins.onAssembly(o)
 }
 
+/**
+ * Logs the emissions of the Observable for debugging purposes.
+ *
+ * @param tag The tag to use for logging.
+ * @return An Observable that logs its emissions.
+ */
 @SuppressLint("LogNotTimber")
 fun <T> Observable<T>.debug(tag: String): Observable<T> where T : Any {
     return this
@@ -234,6 +272,12 @@ fun <T> Observable<T>.debug(tag: String): Observable<T> where T : Any {
         .doOnDispose { Log.w(tag, "onDispose()") }
 }
 
+/**
+ * Logs the emissions of the Observable for debugging purposes, including the thread name.
+ *
+ * @param tag The tag to use for logging.
+ * @return An Observable that logs its emissions and the thread name.
+ */
 @SuppressLint("LogNotTimber")
 fun <T> Observable<T>.debugWithThread(tag: String): Observable<T> where T : Any {
     return this
@@ -246,10 +290,11 @@ fun <T> Observable<T>.debugWithThread(tag: String): Observable<T> where T : Any 
 
 /**
  * Retry the source observable with a delay.
- * @param maxAttempts maximum number of attempts
- * @param predicate predicate which given the current attempt number and the source exception should return the next delay to start a new attempt.
- *                  The return value is in milliseconds
- * @throws [RetryException] when the total number of attempts have been reached
+ *
+ * @param maxAttempts The maximum number of attempts.
+ * @param predicate A function that returns the delay before the next attempt based on the current attempt number and the source exception.
+ * @return An Observable that retries the source observable with a delay.
+ * @throws [RetryException] when the total number of attempts have been reached.
  * @since 3.0.6
  */
 fun <T> Observable<T>.retryWhen(
@@ -267,18 +312,51 @@ fun <T> Observable<T>.retryWhen(
     }
 }
 
+/**
+ * Applies a function to the first item emitted by the Observable.
+ *
+ * @param action A function to apply to the first item.
+ * @return An Observable that applies the function to the first item.
+ */
 fun <T : Any> Observable<T>.doOnFirst(action: (T) -> Unit): Observable<T> =
     compose(ObservableTransformers.doOnFirst(action))
 
+/**
+ * Applies a function to the nth item emitted by the Observable.
+ *
+ * @param nth The position of the item to apply the function to.
+ * @param action A function to apply to the nth item.
+ * @return An Observable that applies the function to the nth item.
+ */
 fun <T : Any> Observable<T>.doOnNth(nth: Long, action: (T) -> Unit): Observable<T> =
     compose(ObservableTransformers.doOnNth(nth, action))
 
+/**
+ * Applies a function after the nth item emitted by the Observable.
+ *
+ * @param nth The position of the item after which to apply the function.
+ * @param action A function to apply after the nth item.
+ * @return An Observable that applies the function after the nth item.
+ */
 fun <T : Any> Observable<T>.doAfterNth(nth: Long, action: (T) -> Unit): Observable<T> =
     compose(ObservableTransformers.doAfterNth(nth, action))
 
+/**
+ * Applies a function after the first item emitted by the Observable.
+ *
+ * @param action A function to apply after the first item.
+ * @return An Observable that applies the function after the first item.
+ */
 fun <T : Any> Observable<T>.doAfterFirst(action: (T) -> Unit): Observable<T> =
     compose(ObservableTransformers.doAfterFirst(action))
 
+/**
+ * Debounces the source Observable from the specified index with the given timeout.
+ *
+ * @param index The index from which to start debouncing.
+ * @param timeout The duration of the debounce timeout.
+ * @return An Observable that debounces the source Observable from the specified index.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 fun <T : Any> Observable<T>.debounceFrom(index: Long = 1, timeout: Duration): Observable<T> {
     return this.publish {
@@ -286,6 +364,14 @@ fun <T : Any> Observable<T>.debounceFrom(index: Long = 1, timeout: Duration): Ob
     }
 }
 
+/**
+ * Debounces the source Observable from the specified index with the given timeout.
+ *
+ * @param index The index from which to start debouncing.
+ * @param timeout The duration of the debounce timeout.
+ * @param unit The time unit for the timeout.
+ * @return An Observable that debounces the source Observable from the specified index.
+ */
 fun <T : Any> Observable<T>.debounceFrom(
     index: Long = 1,
     timeout: Long,
@@ -294,12 +380,24 @@ fun <T : Any> Observable<T>.debounceFrom(
     return this.publish { it.take(index).concatWith(it.debounce(timeout, unit)) }
 }
 
+/**
+ * Applies a timeout to the first item emitted by the Observable.
+ *
+ * @param timeout The duration of the timeout.
+ * @param unit The time unit for the timeout.
+ * @return An Observable that applies a timeout to the first item.
+ */
 fun <T : Any> Observable<T>.timeoutFirstOnly(timeout: Long, unit: TimeUnit): Observable<T> {
     return this.timeout<Long, Long>(
         Observable.timer(timeout, unit)
     ) { Observable.never() }
 }
 
+/**
+ * Emits pairs of the previous and current items emitted by the Observable.
+ *
+ * @return An Observable that emits pairs of the previous and current items.
+ */
 fun <T : Any> Observable<T>.withPrevious(): Observable<Pair<T?, T>> {
     return this.scan(Pair<T?, T?>(null, null)) { previous, current ->
         Pair(previous.second, current)

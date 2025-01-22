@@ -40,8 +40,6 @@ import io.reactivex.rxjava3.plugins.RxJavaPlugins
 import it.sephiroth.android.rxjava3.extensions.MaxRetryCountExceededException
 import it.sephiroth.android.rxjava3.extensions.RetryException
 import it.sephiroth.android.rxjava3.extensions.observable.autoSubscribe
-import it.sephiroth.android.rxjava3.extensions.observable.doAfterFirst
-import it.sephiroth.android.rxjava3.extensions.observable.doOnFirst
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableObserver
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableSubscriber
 import it.sephiroth.android.rxjava3.extensions.operators.FlowableMapNotNull
@@ -54,12 +52,18 @@ import java.util.function.Predicate
 /**
  * RxJavaExtensions
  *
- * @author Alessandro Crugnola on 06.01.21 - 13:31
+ * Provides extension functions for the RxJava Flowable class.
+ * These functions add additional functionality for working with Flowables.
+ *
+ * Author: Alessandro Crugnola on 06.01.21 - 13:31
  */
 
 /**
  * Subscribe the source using an instance of the [AutoDisposableObserver].
  * The source will be disposed when a complete or error event is received.
+ *
+ * @param observer The AutoDisposableObserver to use for subscription.
+ * @return The AutoDisposableObserver used for subscription.
  */
 fun <T> Flowable<T>.autoSubscribe(observer: AutoDisposableSubscriber<T>): AutoDisposableSubscriber<T> where T : Any {
     var flowable = this
@@ -73,6 +77,11 @@ fun <T> Flowable<T>.autoSubscribe(observer: AutoDisposableSubscriber<T>): AutoDi
 }
 
 /**
+ * Subscribe the source using an instance of the [AutoDisposableObserver].
+ * The source will be disposed when a complete or error event is received.
+ *
+ * @param builder A lambda function to configure the AutoDisposableObserver.
+ * @return The AutoDisposableObserver used for subscription.
  * @see [autoSubscribe]
  */
 fun <T> Flowable<T>.autoSubscribe(
@@ -81,6 +90,12 @@ fun <T> Flowable<T>.autoSubscribe(
     return this.autoSubscribe(AutoDisposableSubscriber(builder))
 }
 
+/**
+ * Logs the emissions of the Flowable for debugging purposes.
+ *
+ * @param tag The tag to use for logging.
+ * @return A Flowable that logs its emissions.
+ */
 @SuppressLint("LogNotTimber")
 fun <T> Flowable<T>.debug(tag: String): Flowable<T> where T : Any {
     return this
@@ -93,6 +108,12 @@ fun <T> Flowable<T>.debug(tag: String): Flowable<T> where T : Any {
         .doOnTerminate { Log.w(tag, "onTerminate()") }
 }
 
+/**
+ * Logs the emissions of the Flowable for debugging purposes, including the thread name.
+ *
+ * @param tag The tag to use for logging.
+ * @return A Flowable that logs its emissions and the thread name.
+ */
 @SuppressLint("LogNotTimber")
 fun <T> Flowable<T>.debugWithThread(tag: String): Flowable<T> where T : Any {
     return this
@@ -106,7 +127,9 @@ fun <T> Flowable<T>.debugWithThread(tag: String): Flowable<T> where T : Any {
 }
 
 /**
- * alias for Flowable.observeOn(AndroidSchedulers.mainThread())
+ * Alias for Flowable.observeOn(AndroidSchedulers.mainThread()).
+ *
+ * @return A Flowable that observes on the main thread.
  */
 fun <T> Flowable<T>.observeMain(): Flowable<T> where T : Any {
     return observeOn(AndroidSchedulers.mainThread())
@@ -114,12 +137,12 @@ fun <T> Flowable<T>.observeMain(): Flowable<T> where T : Any {
 
 /**
  * Returns a Flowable that skips all items emitted by the source emitter
- * until a specified interval passed between each emission..
+ * until a specified interval passed between each emission.
  *
- * @param time minimum amount of time need to pass between each interactions
- * @param unit time unit for the [time] param
- * @param defaultOpened if true the very first emission of the source [Flowable] will be allowed, false otherwise
- *
+ * @param time Minimum amount of time needed to pass between each interaction.
+ * @param unit Time unit for the [time] parameter.
+ * @param defaultOpened If true, the very first emission of the source [Flowable] will be allowed, false otherwise.
+ * @return A Flowable that skips items based on the specified interval.
  */
 fun <T : Any> Flowable<T>.skipBetween(
     time: Long,
@@ -140,35 +163,12 @@ fun <T : Any> Flowable<T>.skipBetween(
 }
 
 /**
- * Returns a Flowable that filter out those objects not of the type of [cls1] and [cls2].
- * Moreover objects must alternate between cls1 and cls2, otherwise the object is skipped.
+ * Returns a Flowable that filters out objects not of the type of [cls1] and [cls2].
+ * Moreover, objects must alternate between cls1 and cls2, otherwise the object is skipped.
  *
- * For instance this code:
- *
- *             subject.retry()
- *             .toFlowable(BackpressureStrategy.BUFFER)
- *             .pingPong(TestEventImpl2::class.java, TestEventImpl4::class.java)
- *               .doOnNext { it ->
- *                   Log.v("FlowableTest", "onNext = $it")
- *               }
- *               .subscribe()
- *               subject.onNext(TestEventImpl1())
- *               subject.onNext(TestEventImpl2())
- *               subject.onNext(TestEventImpl2())
- *               subject.onNext(TestEventImpl3())
- *               subject.onNext(TestEventImpl4())
- *               subject.onNext(TestEventImpl4())
- *               subject.onNext(TestEventImpl1())
- *               subject.onNext(TestEventImpl2())
- *               subject.onNext(TestEventImpl3())
- *               subject.onNext(TestEventImpl4())
- *
- * It will only output the following:
- *
- *      FlowableTest: onNext = TestEventImpl2
- *      FlowableTest: onNext = TestEventImpl4
- *      FlowableTest: onNext = TestEventImpl2
- *      FlowableTest: onNext = TestEventImpl4
+ * @param cls1 The first class type to filter.
+ * @param cls2 The second class type to filter.
+ * @return A Flowable that emits only alternating objects of type [cls1] and [cls2].
  */
 fun <T, E, R> Flowable<T>.pingPong(
     cls1: Class<E>,
@@ -207,7 +207,10 @@ fun <T, E, R> Flowable<T>.pingPong(
 }
 
 /**
- * Maps the elements of a list emitted by the source [Flowable]
+ * Maps the elements of a list emitted by the source [Flowable].
+ *
+ * @param mapper A function to apply to each element in the list.
+ * @return A Flowable that emits the mapped list.
  * @since 3.0.5
  */
 @CheckReturnValue
@@ -218,13 +221,14 @@ fun <R, T> Flowable<List<T>>.mapList(mapper: Function<in T, out R>): Flowable<Li
 
 /**
  * Similar to mapNotNull function of RxJava2.
- * Map the elements of the upstream Flowable using the [mapper] function and
+ * Maps the elements of the upstream Flowable using the [mapper] function and
  * returns only those elements not null.
  * If all the elements returned by the mapper function are null, the upstream observable
  * will fire onComplete.
  *
+ * @param mapper A function to apply to each element in the Flowable.
+ * @return A Flowable that emits only non-null elements.
  * @since 3.0.5
- *
  */
 @Suppress("UPPER_BOUND_VIOLATED_BASED_ON_JAVA_ANNOTATIONS")
 @CheckReturnValue
@@ -235,7 +239,9 @@ fun <T, R> Flowable<T>.mapNotNull(mapper: java.util.function.Function<in T, R?>)
 }
 
 /**
- * Converts the source [Flowable] into a [Single]
+ * Converts the source [Flowable] into a [Single].
+ *
+ * @return A Single that emits the first item of the Flowable or an error if the Flowable is empty.
  * @since 3.0.5
  */
 fun <T> Flowable<T>.toSingle(): Single<T> where T : Any {
@@ -244,8 +250,10 @@ fun <T> Flowable<T>.toSingle(): Single<T> where T : Any {
 
 /**
  * If the source [Flowable] returns a [List] of items, this transformer will
- * convert the Flowable into a [Maybe] which emit the very first item of the list,
+ * convert the Flowable into a [Maybe] which emits the very first item of the list,
  * if the list contains at least one element.
+ *
+ * @return A Maybe that emits the first item of the list or completes if the list is empty.
  * @since 3.0.5
  */
 fun <T : Any> Flowable<List<T>>.firstInList(): Maybe<T> {
@@ -254,8 +262,10 @@ fun <T : Any> Flowable<List<T>>.firstInList(): Maybe<T> {
 
 /**
  * If the source [Flowable] returns a [List] of items, this transformer will
- * convert the Flowable into a [Maybe] which emit the very first item that match the predicate.
+ * convert the Flowable into a [Maybe] which emits the very first item that matches the predicate.
  *
+ * @param predicate A function that evaluates each item in the list.
+ * @return A Maybe that emits the first item that matches the predicate or completes if no items match.
  * @since 3.0.5
  */
 fun <T : Any> Flowable<List<T>>.firstInList(predicate: Predicate<T>): Maybe<T> {
@@ -264,10 +274,11 @@ fun <T : Any> Flowable<List<T>>.firstInList(predicate: Predicate<T>): Maybe<T> {
 
 /**
  * Retry the source observable with a delay.
- * @param maxAttempts maximum number of attempts
- * @param predicate predicate which given the current attempt number and the source exception should return the next delay to start a new attempt.
- *                  The return value is in milliseconds
- * @throws [RetryException] when the total number of attempts have been reached
+ *
+ * @param maxAttempts The maximum number of attempts.
+ * @param predicate A function that returns the delay before the next attempt based on the current attempt number and the source exception.
+ * @return A Flowable that retries the source observable with a delay.
+ * @throws [RetryException] when the total number of attempts have been reached.
  * @since 3.0.6
  */
 fun <T> Flowable<T>.retryWhen(
@@ -287,15 +298,41 @@ fun <T> Flowable<T>.retryWhen(
     }
 }
 
+/**
+ * Applies a function to the first item emitted by the Flowable.
+ *
+ * @param action A function to apply to the first item.
+ * @return A Flowable that applies the function to the first item.
+ */
 fun <T : Any> Flowable<T>.doOnFirst(action: (T) -> Unit): Flowable<T> =
     compose(FlowableTransformers.doOnFirst(action))
 
+/**
+ * Applies a function after the first item emitted by the Flowable.
+ *
+ * @param action A function to apply after the first item.
+ * @return A Flowable that applies the function after the first item.
+ */
 fun <T : Any> Flowable<T>.doAfterFirst(action: (T) -> Unit): Flowable<T> =
     compose(FlowableTransformers.doAfterFirst(action))
 
+/**
+ * Applies a function to the nth item emitted by the Flowable.
+ *
+ * @param nth The position of the item to apply the function to.
+ * @param action A function to apply to the nth item.
+ * @return A Flowable that applies the function to the nth item.
+ */
 fun <T : Any> Flowable<T>.doOnNth(nth: Long, action: (T) -> Unit): Flowable<T> =
     compose(FlowableTransformers.doOnNth(nth, action))
 
+/**
+ * Applies a function after the nth item emitted by the Flowable.
+ *
+ * @param nth The position of the item after which to apply the function.
+ * @param action A function to apply after the nth item.
+ * @return A Flowable that applies the function after the nth item.
+ */
 fun <T : Any> Flowable<T>.doAfterNth(nth: Long, action: (T) -> Unit): Flowable<T> =
     compose(FlowableTransformers.doAfterNth(nth, action))
 
@@ -304,9 +341,9 @@ fun <T : Any> Flowable<T>.doAfterNth(nth: Long, action: (T) -> Unit): Flowable<T
  * computed by calling the [backOffTimeFunc] with the current retry count. If the upstream [Flowable] fails more than [maxRetryCount] times, a
  * [MaxRetryCountExceededException] will be emitted.
  *
- * @param maxRetryCount the maximum number of retries before a [MaxRetryCountExceededException] will be emitted
- * @param backOffTimeFunc a callback that will be called to get the back-off time for the next retry (in milliseconds)
- * @return the new [Flowable] instance
+ * @param maxRetryCount The maximum number of retries before a [MaxRetryCountExceededException] will be emitted.
+ * @param backOffTimeFunc A callback that will be called to get the back-off time for the next retry (in milliseconds).
+ * @return The new [Flowable] instance.
  */
 fun <T : Any> Flowable<T>.retryWithBackOffDelay(
     maxRetryCount: Int,

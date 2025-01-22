@@ -44,12 +44,18 @@ import java.util.Optional
 /**
  * RxJavaExtensions
  *
- * @author Alessandro Crugnola on 28.02.21 - 18:52
+ * Provides extension functions for the Android Context class.
+ * These functions add additional functionality for working with Contexts.
+ *
+ * Author: Alessandro Crugnola on 28.02.21 - 18:52
  */
 
 /**
  * Register the current context to one or more intent actions.
- * Once an action is received, the result [Observable] will trigger a new [Intent]
+ * Once an action is received, the result [Observable] will trigger a new [Intent].
+ *
+ * @param action The actions to register for.
+ * @return An Observable that emits the received intents.
  */
 @Deprecated(
     message = "Use observeBroadcast instead",
@@ -59,6 +65,16 @@ fun Context.observeBroadcasts(vararg action: String): Observable<Intent> {
     return observeBroadcasts(*action, dataScheme = null, permission = null, scheduler = null)
 }
 
+/**
+ * Register the current context to one or more intent actions with additional parameters.
+ * Once an action is received, the result [Observable] will trigger a new [Intent].
+ *
+ * @param action The actions to register for.
+ * @param dataScheme The data scheme to match.
+ * @param permission The permission to require.
+ * @param scheduler The handler to use for scheduling.
+ * @return An Observable that emits the received intents.
+ */
 @Deprecated(
     message = "Use observeBroadcast instead",
     replaceWith = ReplaceWith("observeBroadcast(intentFilter, permission, receiverFlags)")
@@ -80,6 +96,16 @@ fun Context.observeBroadcasts(
     )
 }
 
+/**
+ * Register the current context to an intent filter.
+ * Once an action is received, the result [Observable] will trigger a new [Intent].
+ *
+ * @param intentFilter The intent filter to register.
+ * @param permission The permission to require.
+ * @param scheduler The handler to use for scheduling.
+ * @param receiverFlags The flags to use for the receiver.
+ * @return An Observable that emits the received intents.
+ */
 @SuppressLint("UnspecifiedRegisterReceiverFlag")
 @Deprecated(
     message = "Use observeBroadcast instead",
@@ -126,7 +152,14 @@ fun Context.observeBroadcasts(
 }
 
 /**
- * Create a new [Observable] to subscribe to based on an Android broadcast
+ * Create a new [Observable] to subscribe to based on an Android broadcast.
+ *
+ * @param intentFilter The intent filter to register.
+ * @param broadcastPermission The permission to require.
+ * @param schedulerHandler The handler to use for scheduling.
+ * @param receiverFlags The flags to use for the receiver.
+ * @param registerAction An optional action to perform during registration.
+ * @return An Observable that emits the received intents.
  */
 fun Context.observeBroadcast(
     intentFilter: IntentFilter,
@@ -147,6 +180,13 @@ fun Context.observeBroadcast(
     )
 }
 
+/**
+ * Bind to a service and return an Observable that emits the service's binder.
+ *
+ * @param intent The intent to bind to the service.
+ * @param flags The flags to use for binding.
+ * @return An Observable that emits the service's binder.
+ */
 fun Context.bindService(
     intent: Intent,
     flags: Int = Context.BIND_AUTO_CREATE
