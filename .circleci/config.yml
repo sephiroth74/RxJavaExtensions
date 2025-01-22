@@ -21,8 +21,9 @@ jobs:
           avd-name: myavd
           no-window: true
           restore-gradle-cache-prefix: v1a
-      #          test-command: ./gradlew --info test testDebugUnitTestCoverage
+
       - android/run-tests
+
       - android/save-gradle-cache:
           cache-prefix: v1a
 
@@ -69,6 +70,10 @@ jobs:
       - run:
           name: Run Lint
           command: ./gradlew lint
+        
+      - run:
+          name: Publish Local Artifacts
+          command: ./gradlew publishToMavenLocal
 
       - store_artifacts:
           path: RxJavaExtensions/build/reports
