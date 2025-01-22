@@ -32,12 +32,14 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
+import android.os.IBinder
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.ObservableEmitter
 import io.reactivex.rxjava3.disposables.Disposable
 import it.sephiroth.android.rxjava3.extensions.core.BroadcastReceiverObservableOnSubscribe
 import it.sephiroth.android.rxjava3.extensions.observers.BroadcastReceiverObserver
+import java.util.Optional
 
 /**
  * RxJavaExtensions
@@ -143,4 +145,12 @@ fun Context.observeBroadcast(
             registerAction
         )
     )
+}
+
+
+fun Context.bindService(
+    intent: Intent,
+    flags: Int = Context.BIND_AUTO_CREATE
+): Observable<Optional<IBinder>> {
+    return RxServiceBindingFactory.bind(this, intent, flags)
 }
