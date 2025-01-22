@@ -40,7 +40,9 @@ class AutoDisposableObserver<T : Any>() : DisposableObserver<T>() {
     private var _doOnError: ((Throwable) -> Unit)? = null
     private var _doOnFinish: (() -> Unit)? = null
     private var _doOnDispose: (() -> Unit)? = null
+    @Suppress("PropertyName", "VariableNaming")
     internal var _doOnFirst: ((T) -> Unit)? = null
+    @Suppress("PropertyName", "VariableNaming")
     internal var _doAfterFirst: ((T) -> Unit)? = null
 
     @Suppress("unused")

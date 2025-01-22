@@ -27,7 +27,9 @@
 package it.sephiroth.android.rxjava3.extensions.observable
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.annotations.SchedulerSupport
@@ -40,12 +42,14 @@ import io.reactivex.rxjava3.functions.Function
 import io.reactivex.rxjava3.kotlin.Observables
 import io.reactivex.rxjava3.plugins.RxJavaPlugins
 import io.reactivex.rxjava3.schedulers.Schedulers
+import it.sephiroth.android.rxjava3.extensions.MaxRetryCountExceededException
 import it.sephiroth.android.rxjava3.extensions.MuteException
 import it.sephiroth.android.rxjava3.extensions.RetryException
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableObserver
 import it.sephiroth.android.rxjava3.extensions.operators.ObservableMapNotNull
 import it.sephiroth.android.rxjava3.extensions.operators.ObservableTransformers
 import it.sephiroth.android.rxjava3.extensions.single.firstInList
+import java.time.Duration
 import java.util.Objects
 import java.util.concurrent.TimeUnit
 import java.util.function.Predicate
@@ -134,6 +138,22 @@ fun <T> Observable<T>.retry(
         ).map { if (it.second >= maxRetry) throw it.first }
     }
 
+
+fun <T : Any> Observable<T>.retryWithBackOffDelay(maxRetryCount: Int, backOffTimeFunc: (Int) -> Long): Observable<T> {
+    return retryWhen { errors ->
+        errors.zipWith(Observable.range(1, maxRetryCount + 1)) { throwable, retryCount -> Pair(throwable, retryCount) }
+            .flatMap { (throwable, retryCount) ->
+                if (retryCount > maxRetryCount) {
+                    Observable.error(MaxRetryCountExceededException(throwable))
+                } else {
+                    val backOffTime: Long = backOffTimeFunc(retryCount)
+                    Observable.timer(backOffTime, TimeUnit.MILLISECONDS)
+                }
+            }
+    }
+}
+
+
 /**
  * Returns an Observable that emits the source observable every [time]. The source observable is triggered immediately
  * and all the consecutive calls after the time specified
@@ -150,6 +170,14 @@ fun <T> Observable<T>.refreshEvery(
  */
 fun <T> Observable<T>.autoRefresh(publisher: Observable<Boolean>): Observable<T> where T : Any {
     return publisher.filter { it }.flatMap { this }
+}
+
+fun <T : Any> Observable<T>.autoRefresh(
+    initialDelay: Long = 0,
+    period: Long = 1,
+    unit: TimeUnit = TimeUnit.MINUTES
+): Observable<T> {
+    return Observable.interval(initialDelay, period, unit).switchMap { this }
 }
 
 /**
@@ -252,3 +280,32 @@ fun <T : Any> Observable<T>.doAfterNth(nth: Long, action: (T) -> Unit): Observab
 
 fun <T : Any> Observable<T>.doAfterFirst(action: (T) -> Unit): Observable<T> =
     compose(ObservableTransformers.doAfterFirst(action))
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun <T : Any> Observable<T>.debounceFrom(index: Long = 1, timeout: Duration): Observable<T> {
+    return this.publish {
+        it.take(index).concatWith(it.debounce(timeout.toMillis(), TimeUnit.MILLISECONDS))
+    }
+}
+
+fun <T : Any> Observable<T>.debounceFrom(
+    index: Long = 1,
+    timeout: Long,
+    unit: TimeUnit
+): Observable<T> {
+    return this.publish { it.take(index).concatWith(it.debounce(timeout, unit)) }
+}
+
+fun <T : Any> Observable<T>.timeoutFirstOnly(timeout: Long, unit: TimeUnit): Observable<T> {
+    return this.timeout<Long, Long>(
+        Observable.timer(timeout, unit)
+    ) { Observable.never() }
+}
+
+fun <T : Any> Observable<T>.withPrevious(): Observable<Pair<T?, T>> {
+    return this.scan(Pair<T?, T?>(null, null)) { previous, current ->
+        Pair(previous.second, current)
+    }.skip(1).map {
+        it.first to it.second!!
+    }
+}

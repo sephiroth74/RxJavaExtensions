@@ -147,7 +147,6 @@ fun Context.observeBroadcast(
     )
 }
 
-
 fun Context.bindService(
     intent: Intent,
     flags: Int = Context.BIND_AUTO_CREATE

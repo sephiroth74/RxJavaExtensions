@@ -11,6 +11,7 @@ import it.sephiroth.android.rxjava3.extensions.completable.delay
 import it.sephiroth.android.rxjava3.extensions.observable.ObservableUtils
 import it.sephiroth.android.rxjava3.extensions.observable.autoRefresh
 import it.sephiroth.android.rxjava3.extensions.observable.autoSubscribe
+import it.sephiroth.android.rxjava3.extensions.observable.debounceFrom
 import it.sephiroth.android.rxjava3.extensions.observable.debug
 import it.sephiroth.android.rxjava3.extensions.observable.debugWithThread
 import it.sephiroth.android.rxjava3.extensions.observable.doAfterFirst
@@ -25,7 +26,9 @@ import it.sephiroth.android.rxjava3.extensions.observable.observeMain
 import it.sephiroth.android.rxjava3.extensions.observable.refreshEvery
 import it.sephiroth.android.rxjava3.extensions.observable.retry
 import it.sephiroth.android.rxjava3.extensions.observable.retryWhen
+import it.sephiroth.android.rxjava3.extensions.observable.timeoutFirstOnly
 import it.sephiroth.android.rxjava3.extensions.observable.toSingle
+import it.sephiroth.android.rxjava3.extensions.observable.withPrevious
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableObserver
 import it.sephiroth.android.rxjava3.extensions.operators.ObservableTransformers
 import org.junit.Assert
@@ -156,6 +159,34 @@ class ObservableAndroidTest {
         o.awaitCount(2)
 
         Assert.assertEquals(2, counter.get())
+    }
+
+    @Test
+    fun test005b() {
+        val now = System.currentTimeMillis()
+        val counter = CountDownLatch(10)
+        var ts: Long? = null
+
+        val o = Observable
+            .just("--result--")
+            .subscribeOn(Schedulers.newThread())
+            .autoRefresh(316, 116, TimeUnit.MILLISECONDS)
+            .doOnFirst {
+                println("ObservableAndroidTest::doOnFirst($it, ts=${System.currentTimeMillis()})")
+                val delta = System.currentTimeMillis() - now
+                Assert.assertTrue("delta = $delta should be > 300", delta >= 300)
+            }
+            .doAfterFirst {
+                println("ObservableAndroidTest::doAfterFirst($it, ts=${System.currentTimeMillis()})")
+                if (null != ts) {
+                    val delta = System.currentTimeMillis() - ts!!
+                    Assert.assertTrue("delta = $delta should be > 100", delta >= 100)
+                }
+                ts = System.currentTimeMillis()
+                counter.countDown()
+            }
+            .test()
+        counter.await(2, TimeUnit.SECONDS)
     }
 
     @Test
@@ -778,6 +809,89 @@ class ObservableAndroidTest {
         latch.await()
         disposable.dispose()
         Assert.assertTrue(disposable.isDisposed)
+    }
+
+    @Test
+    fun test025() {
+        val latch = CountDownLatch(1)
+        val captured = CountDownLatch(1)
+        var now = System.currentTimeMillis()
+        val disposable = Observable.create<Long> { emitter ->
+            emitter.onNext(0)
+            for (i in 1..10) {
+                Thread.sleep((i * 100).toLong())
+                emitter.onNext(i.toLong())
+            }
+            emitter.onComplete()
+        }
+            .doOnSubscribe {
+                now = System.currentTimeMillis()
+            }
+            .doOnNext {
+                println("**** onNext: $it")
+                if (it > 10) {
+                    latch.countDown()
+                }
+            }
+            .debounceFrom(1, 600, TimeUnit.MILLISECONDS)
+            .autoSubscribe {
+                doOnFirst {
+                    val delta = System.currentTimeMillis() - now
+                    Assert.assertTrue("delta = $delta should be < 500", delta < 600)
+                    now = System.currentTimeMillis()
+                }
+                doAfterFirst {
+                    val delta = System.currentTimeMillis() - now
+                    Assert.assertTrue("delta = $delta should be >= 400", delta >= 400)
+                    now = System.currentTimeMillis()
+                    captured.countDown()
+                }
+                doOnComplete {
+                    latch.countDown()
+                }
+            }
+
+        latch.await(3, TimeUnit.SECONDS)
+        captured.await(3, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun test026() {
+        Observable.create<Int> { emitter ->
+            emitter.onNext(0)
+            Thread.sleep(600)
+            emitter.onNext(1)
+            emitter.onNext(2)
+            emitter.onComplete()
+        }.timeoutFirstOnly(500, TimeUnit.MILLISECONDS)
+            .test()
+            .assertNoErrors()
+            .assertComplete()
+    }
+
+    @Test
+    fun test027() {
+        var lastValue: Int? = null
+        var firstValue: Int? = null
+        Observable.just(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+            .withPrevious()
+            .doOnFirst {
+                firstValue = it.second
+                Assert.assertEquals(Pair(null, 0), it)
+
+            }
+            .doAfterFirst {
+                Assert.assertNotNull(it.first)
+                Assert.assertTrue(it.first!! < it.second)
+                lastValue = it.second
+
+            }
+            .test()
+            .assertComplete()
+            .assertNoErrors()
+
+        Assert.assertEquals(0, firstValue)
+        Assert.assertEquals(9, lastValue)
     }
 
     companion object {
