@@ -45,18 +45,29 @@ import java.util.concurrent.TimeUnit
 /**
  * RxJavaExtensions
  *
- * @author Alessandro Crugnola on 06.01.21 - 13:29
+ * Provides extension functions for the RxJava Completable class.
+ * These functions add additional functionality for working with Completables.
+ *
+ * Author: Alessandro Crugnola on 06.01.21 - 13:29
  */
 
 /**
  * Subscribe to this [Completable] using an instance of the [AutoDisposableCompletableObserver].
  * Source will be automatically disposed on complete or on error.
+ *
+ * @param observer The AutoDisposableCompletableObserver to use for subscription.
+ * @return The AutoDisposableCompletableObserver used for subscription.
  */
 fun Completable.autoSubscribe(observer: AutoDisposableCompletableObserver): AutoDisposableCompletableObserver {
     return this.subscribeWith(observer)
 }
 
 /**
+ * Subscribe to this [Completable] using an instance of the [AutoDisposableCompletableObserver].
+ * Source will be automatically disposed on complete or on error.
+ *
+ * @param builder A lambda function to configure the AutoDisposableCompletableObserver.
+ * @return The AutoDisposableCompletableObserver used for subscription.
  * @see [autoSubscribe]
  */
 fun Completable.autoSubscribe(
@@ -66,6 +77,10 @@ fun Completable.autoSubscribe(
 }
 
 /**
+ * Subscribe to this [Completable] using an instance of the [AutoDisposableCompletableObserver].
+ * Source will be automatically disposed on complete or on error.
+ *
+ * @return The AutoDisposableCompletableObserver used for subscription.
  * @see [autoSubscribe]
  */
 fun Completable.autoSubscribe(): AutoDisposableCompletableObserver {
@@ -73,21 +88,34 @@ fun Completable.autoSubscribe(): AutoDisposableCompletableObserver {
 }
 
 /**
- * alias for <code>Completable.observeOn(AndroidSchedulers.mainThread())</code>
+ * Alias for Completable.observeOn(AndroidSchedulers.mainThread()).
+ *
+ * @return A Completable that observes on the main thread.
  */
 fun Completable.observeMain(): Completable {
     return observeOn(AndroidSchedulers.mainThread())
 }
 
 /**
- * Trigger a delayed action (invoked on the main thread by default)
+ * Trigger a delayed action (invoked on the main thread by default).
+ *
+ * @param delay The delay before the action is triggered.
+ * @param unit The time unit for the delay.
+ * @param action The action to be triggered.
+ * @return A Disposable that can be used to dispose the action.
  */
 fun delay(delay: Long, unit: TimeUnit, action: () -> Unit): Disposable {
     return delay(delay, unit, AndroidSchedulers.mainThread(), action)
 }
 
 /**
- * Trigger a delayed action on the given [Scheduler]
+ * Trigger a delayed action on the given [Scheduler].
+ *
+ * @param delay The delay before the action is triggered.
+ * @param unit The time unit for the delay.
+ * @param scheduler The scheduler to use for the delay.
+ * @param action The action to be triggered.
+ * @return A Disposable that can be used to dispose the action.
  */
 fun delay(delay: Long, unit: TimeUnit, scheduler: Scheduler, action: () -> Unit): Disposable {
     return if (delay <= 0L) {
@@ -100,14 +128,37 @@ fun delay(delay: Long, unit: TimeUnit, scheduler: Scheduler, action: () -> Unit)
     }
 }
 
+/**
+ * Trigger a delayed action using a [Duration].
+ *
+ * @param duration The duration before the action is triggered.
+ * @param action The action to be triggered.
+ * @return A Disposable that can be used to dispose the action.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 fun delay(duration: Duration, action: (() -> Unit)): Disposable =
     delay(duration.toMillis(), TimeUnit.MILLISECONDS, action)
 
+/**
+ * Trigger a delayed action on the given [Scheduler] using a [Duration].
+ *
+ * @param duration The duration before the action is triggered.
+ * @param scheduler The scheduler to use for the delay.
+ * @param action The action to be triggered.
+ * @return A Disposable that can be used to dispose the action.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 fun delay(duration: Duration, scheduler: Scheduler, action: (() -> Unit)): Disposable =
     delay(duration.toMillis(), TimeUnit.MILLISECONDS, scheduler, action)
 
+/**
+ * Trigger a delayed action on the given [Scheduler] using a [Duration].
+ *
+ * @param scheduler The scheduler to use for the delay.
+ * @param duration The duration before the action is triggered.
+ * @param action The action to be triggered.
+ * @return A Disposable that can be used to dispose the action.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 fun delay(scheduler: Scheduler, duration: Duration, action: (() -> Unit)): Disposable =
     delay(duration.toMillis(), TimeUnit.MILLISECONDS, scheduler, action)
@@ -117,9 +168,9 @@ fun delay(scheduler: Scheduler, duration: Duration, action: (() -> Unit)): Dispo
  * computed by calling the [backOffTimeFunc] with the current retry count. If the upstream [Completable] fails more than [maxRetryCount] times, a
  * [MaxRetryCountExceededException] will be emitted.
  *
- * @param maxRetryCount the maximum number of retries before a [MaxRetryCountExceededException] will be emitted
- * @param backOffTimeFunc a callback that will be called to get the back-off time for the next retry (in milliseconds)
- * @return the new [Completable] instance
+ * @param maxRetryCount The maximum number of retries before a [MaxRetryCountExceededException] will be emitted.
+ * @param backOffTimeFunc A callback that will be called to get the back-off time for the next retry (in milliseconds).
+ * @return The new [Completable] instance.
  */
 fun Completable.retryWithBackOffDelay(
     maxRetryCount: Int,
@@ -140,10 +191,11 @@ fun Completable.retryWithBackOffDelay(
 
 /**
  * Retry the source observable with a delay.
- * @param maxAttempts maximum number of attempts
- * @param predicate predicate which given the current attempt number and the source exception should return the next delay to start a new attempt.
- *                  The return value is in milliseconds
- * @throws [RetryException] when the total number of attempts have been reached
+ *
+ * @param maxAttempts The maximum number of attempts.
+ * @param predicate A function that returns the delay before the next attempt based on the current attempt number and the source exception.
+ * @return A Completable that retries the source observable with a delay.
+ * @throws [RetryException] when the total number of attempts have been reached.
  * @since 3.0.6
  */
 fun Completable.retryWhen(maxAttempts: Int, predicate: BiFunction<Throwable, Int, Long>): Completable {
@@ -158,6 +210,12 @@ fun Completable.retryWhen(maxAttempts: Int, predicate: BiFunction<Throwable, Int
     }
 }
 
+/**
+ * Logs the emissions of the Completable for debugging purposes.
+ *
+ * @param tag The tag to use for logging.
+ * @return A Completable that logs its emissions.
+ */
 @SuppressLint("LogNotTimber")
 fun Completable.debug(tag: String): Completable {
     return this
@@ -167,6 +225,12 @@ fun Completable.debug(tag: String): Completable {
         .doOnDispose { Log.w(tag, "onDispose()") }
 }
 
+/**
+ * Logs the emissions of the Completable for debugging purposes, including the thread name.
+ *
+ * @param tag The tag to use for logging.
+ * @return A Completable that logs its emissions and the thread name.
+ */
 @SuppressLint("LogNotTimber")
 fun Completable.debugWithThread(tag: String): Completable {
     return this
