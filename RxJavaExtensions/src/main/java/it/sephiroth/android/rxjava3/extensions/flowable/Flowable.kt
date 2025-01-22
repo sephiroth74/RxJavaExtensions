@@ -37,6 +37,7 @@ import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.functions.BiFunction
 import io.reactivex.rxjava3.functions.Function
 import io.reactivex.rxjava3.plugins.RxJavaPlugins
+import it.sephiroth.android.rxjava3.extensions.MaxRetryCountExceededException
 import it.sephiroth.android.rxjava3.extensions.RetryException
 import it.sephiroth.android.rxjava3.extensions.observable.autoSubscribe
 import it.sephiroth.android.rxjava3.extensions.observable.doAfterFirst
@@ -297,3 +298,34 @@ fun <T : Any> Flowable<T>.doOnNth(nth: Long, action: (T) -> Unit): Flowable<T> =
 
 fun <T : Any> Flowable<T>.doAfterNth(nth: Long, action: (T) -> Unit): Flowable<T> =
     compose(FlowableTransformers.doAfterNth(nth, action))
+
+/**
+ * If the upstream [Flowable] fails, it re-tries subscribing to it again up to [maxRetryCount] times. The back-off time before each retry is
+ * computed by calling the [backOffTimeFunc] with the current retry count. If the upstream [Flowable] fails more than [maxRetryCount] times, a
+ * [MaxRetryCountExceededException] will be emitted.
+ *
+ * @param maxRetryCount the maximum number of retries before a [MaxRetryCountExceededException] will be emitted
+ * @param backOffTimeFunc a callback that will be called to get the back-off time for the next retry (in milliseconds)
+ * @return the new [Flowable] instance
+ */
+fun <T : Any> Flowable<T>.retryWithBackOffDelay(
+    maxRetryCount: Int,
+    backOffTimeFunc: (Int) -> Long
+): Flowable<T> {
+    return retryWhen { errors ->
+        errors.zipWith(Flowable.range(1, maxRetryCount + 1)) { throwable, retryCount ->
+            Pair(
+                throwable,
+                retryCount
+            )
+        }
+            .flatMap { (throwable, retryCount) ->
+                if (retryCount > maxRetryCount) {
+                    Flowable.error(MaxRetryCountExceededException(throwable))
+                } else {
+                    val backOffTime = backOffTimeFunc(retryCount)
+                    Flowable.timer(backOffTime, TimeUnit.MILLISECONDS)
+                }
+            }
+    }
+}

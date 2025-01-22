@@ -37,6 +37,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.functions.BiFunction
 import io.reactivex.rxjava3.functions.Function
+import it.sephiroth.android.rxjava3.extensions.MaxRetryCountExceededException
 import it.sephiroth.android.rxjava3.extensions.RetryException
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableSingleObserver
 import java.util.*
@@ -163,4 +164,27 @@ fun <T> Single<T>.debugWithThread(tag: String): Single<T> where T : Any {
         .doOnSubscribe { Log.v(tag, "[${Thread.currentThread().name}] onSubscribe()") }
         .doOnSuccess { Log.v(tag, "[${Thread.currentThread().name}] onSuccess()") }
         .doOnDispose { Log.w(tag, "[${Thread.currentThread().name}] onDispose()") }
+}
+
+/**
+ * If the upstream [Single] fails, it re-tries subscribing to it again up to [maxRetryCount] times. The back-off time before each retry is
+ * computed by calling the [backOffTimeFunc] with the current retry count. If the upstream [Single] fails more than [maxRetryCount] times, a
+ * [MaxRetryCountExceededException] will be emitted.
+ *
+ * @param maxRetryCount the maximum number of retries before a [MaxRetryCountExceededException] will be emitted
+ * @param backOffTimeFunc a callback that will be called to get the back-off time for the next retry (in milliseconds)
+ * @return the new [Single] instance
+ */
+fun <T : Any> Single<T>.retryWithBackOffDelay(maxRetryCount: Int, backOffTimeFunc: (Int) -> Long): Single<T> {
+    return retryWhen { errors ->
+        errors.zipWith(Flowable.range(1, maxRetryCount + 1)) { throwable, retryCount -> Pair(throwable, retryCount) }
+            .flatMap { (throwable, retryCount) ->
+                if (retryCount > maxRetryCount) {
+                    Flowable.error(MaxRetryCountExceededException(throwable))
+                } else {
+                    val backOffTime = backOffTimeFunc(retryCount)
+                    Flowable.timer(backOffTime, TimeUnit.MILLISECONDS)
+                }
+            }
+    }
 }

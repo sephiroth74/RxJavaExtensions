@@ -138,7 +138,6 @@ fun <T> Observable<T>.retry(
         ).map { if (it.second >= maxRetry) throw it.first }
     }
 
-
 fun <T : Any> Observable<T>.retryWithBackOffDelay(maxRetryCount: Int, backOffTimeFunc: (Int) -> Long): Observable<T> {
     return retryWhen { errors ->
         errors.zipWith(Observable.range(1, maxRetryCount + 1)) { throwable, retryCount -> Pair(throwable, retryCount) }
@@ -152,7 +151,6 @@ fun <T : Any> Observable<T>.retryWithBackOffDelay(maxRetryCount: Int, backOffTim
             }
     }
 }
-
 
 /**
  * Returns an Observable that emits the source observable every [time]. The source observable is triggered immediately

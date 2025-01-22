@@ -27,15 +27,19 @@
 package it.sephiroth.android.rxjava3.extensions.completable
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.functions.BiFunction
+import it.sephiroth.android.rxjava3.extensions.MaxRetryCountExceededException
 import it.sephiroth.android.rxjava3.extensions.RetryException
 import it.sephiroth.android.rxjava3.extensions.observers.AutoDisposableCompletableObserver
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 /**
@@ -93,6 +97,44 @@ fun delay(delay: Long, unit: TimeUnit, scheduler: Scheduler, action: () -> Unit)
         Completable.complete().delay(delay, unit).observeOn(scheduler).autoSubscribe {
             doOnComplete { action.invoke() }
         }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun delay(duration: Duration, action: (() -> Unit)): Disposable =
+    delay(duration.toMillis(), TimeUnit.MILLISECONDS, action)
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun delay(duration: Duration, scheduler: Scheduler, action: (() -> Unit)): Disposable =
+    delay(duration.toMillis(), TimeUnit.MILLISECONDS, scheduler, action)
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun delay(scheduler: Scheduler, duration: Duration, action: (() -> Unit)): Disposable =
+    delay(duration.toMillis(), TimeUnit.MILLISECONDS, scheduler, action)
+
+/**
+ * If the upstream [Completable] fails, it re-tries subscribing to it again up to [maxRetryCount] times. The back-off time before each retry is
+ * computed by calling the [backOffTimeFunc] with the current retry count. If the upstream [Completable] fails more than [maxRetryCount] times, a
+ * [MaxRetryCountExceededException] will be emitted.
+ *
+ * @param maxRetryCount the maximum number of retries before a [MaxRetryCountExceededException] will be emitted
+ * @param backOffTimeFunc a callback that will be called to get the back-off time for the next retry (in milliseconds)
+ * @return the new [Completable] instance
+ */
+fun Completable.retryWithBackOffDelay(
+    maxRetryCount: Int,
+    backOffTimeFunc: (Int) -> Long
+): Completable {
+    return retryWhen { errors ->
+        errors.zipWith(Flowable.range(1, maxRetryCount + 1)) { throwable, retryCount -> Pair(throwable, retryCount) }
+            .flatMap { (throwable, retryCount) ->
+                if (retryCount > maxRetryCount) {
+                    Flowable.error(MaxRetryCountExceededException(throwable))
+                } else {
+                    val backOffTime = backOffTimeFunc(retryCount)
+                    Flowable.timer(backOffTime, TimeUnit.MILLISECONDS)
+                }
+            }
     }
 }
 
